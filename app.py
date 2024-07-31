@@ -50,7 +50,7 @@ def get_group_kappas(groups, data):
         results.append((group, kappa))
     return results
 
-st.title("Fleiss' Kappa Calculator")
+st.title("Rayyan Team Harmony Test")
 
 n_reviewers = st.number_input("Number of reviewers:", min_value=1, value=5, step=1)
 n_items = st.number_input("Number of items:", min_value=1, value=5, step=1)
