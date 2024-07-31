@@ -53,7 +53,7 @@ def get_group_kappas(groups, data):
 st.title("Rayyan Team Harmony Test")
 
 n_reviewers = st.number_input("Number of reviewers:", min_value=1, value=5, step=1)
-n_items = st.number_input("Number of items:", min_value=1, value=5, step=1)
+n_items = st.number_input("Number of references:", min_value=1, value=5, step=1)
 threshold = st.number_input("Enter the threshold:", min_value=0.0, max_value=1.0, value=0.6)
 
 ratings = []
