@@ -6,7 +6,7 @@ from itertools import combinations
 def compute_fleiss_kappa(matrix):
     kappa = fleiss_kappa(matrix)
     if np.isnan(kappa):
-        return -1 
+        return -1  # Treat NaN as unacceptable kappa score
     return kappa
 
 def create_contingency_matrix(data, n_categories):
