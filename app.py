@@ -1,7 +1,9 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 from statsmodels.stats.inter_rater import fleiss_kappa
 from itertools import combinations
+import json
 
 def compute_fleiss_kappa(matrix):
     kappa = fleiss_kappa(matrix)
@@ -50,36 +52,50 @@ def get_group_kappas(groups, data):
         results.append((group, kappa))
     return results
 
-st.title("Rayyan Team Harmony Test")
+def parse_decisions_correctly(json_string):
+    try:
+        clean_string = json_string.replace('RAYYAN-INCLUSION: ', '').strip()
+        clean_string = clean_string.replace('=>', ':').replace("'", '"')
+        decisions = json.loads(clean_string)
+        return decisions
+    except json.JSONDecodeError as e:
+        return None
 
-n_reviewers = st.number_input("Number of reviewers:", min_value=1, value=5, step=1)
-n_items = st.number_input("Number of references:", min_value=1, value=5, step=1)
+def convert_to_binary(decisions):
+    return [1 if value == 'Included' else 0 for value in decisions.values()]
+
+st.title("Fleiss' Kappa Calculator")
+
 threshold = st.number_input("Enter the threshold:", min_value=0.0, max_value=1.0, value=0.6)
 
-ratings = []
-st.subheader("Enter Ratings for Each Reviewer (comma-separated ones and zeros)")
+uploaded_file = st.file_uploader("Upload CSV file with ratings", type=["csv"])
 
-for i in range(n_reviewers):
-    reviewer_input = st.text_area(f"Reviewer {i+1}", key=f"reviewer_{i}")
-    if reviewer_input:
-        reviewer_ratings = list(map(int, reviewer_input.split(',')))
-        if len(reviewer_ratings) != n_items:
-            st.warning(f"Reviewer {i+1}: Number of ratings ({len(reviewer_ratings)}) does not match number of items ({n_items})")
-        else:
-            ratings.append(reviewer_ratings)
+if uploaded_file is not None:
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.write("Uploaded CSV File:")
+        st.write(df)
 
-if st.button("Calculate"):
-    if len(ratings) == n_reviewers and all(len(r) == n_items for r in ratings):
-        try:
-            groups = classify_reviewers(ratings, threshold)
-            kappa_results = get_group_kappas(groups, ratings)
-            
-            st.subheader("Classified Groups and Fleiss' Kappa")
-            for group, kappa in kappa_results:
-                st.markdown(f"**Group {group}**")
-                st.write(f"Fleiss' kappa: {kappa:.4f}")
+        # Parse and convert the decisions
+        df['parsed'] = df.iloc[:, 0].apply(parse_decisions_correctly)
+        df['binary'] = df['parsed'].apply(convert_to_binary)
+        
+        # Transpose the binary arrays to match the expected input format
+        ratings = df['binary'].tolist()
+        ratings = np.array(ratings).T.tolist()
+        n_reviewers, n_items = len(ratings), len(ratings[0])
+        
+        if st.button("Calculate"):
+            try:
+                groups = classify_reviewers(ratings, threshold)
+                kappa_results = get_group_kappas(groups, ratings)
 
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    else:
-        st.error("Please ensure all reviewers have provided the correct number of ratings.")
+                st.subheader("Classified Groups and Fleiss' Kappa")
+                for group, kappa in kappa_results:
+                    st.markdown(f"**Group {group}**")
+                    st.write(f"Fleiss' kappa: {kappa:.4f}")
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    except Exception as e:
+        st.error(f"Error loading the file: {str(e)}")
