@@ -137,8 +137,9 @@ uploaded_file = st.file_uploader("Upload CSV file with ratings", type=["csv"])
 if uploaded_file is not None:
     try:
         df = pd.read_csv(uploaded_file)
-        st.write("Uploaded CSV File:")
-        st.write(df)
+        # Commenting out the display of the uploaded CSV file and arrays
+        # st.write("Uploaded CSV File:")
+        # st.write(df)
 
         # Parse the decisions
         df['parsed'] = df.iloc[:, 0].apply(parse_decisions_correctly)
@@ -151,8 +152,9 @@ if uploaded_file is not None:
         n_reviewers = len(ratings)
         n_items = len(ratings[0])
         
-        st.write("Reviewer Arrays:")
-        st.write(reviewer_arrays)
+        # Commenting out the display of reviewer arrays
+        # st.write("Reviewer Arrays:")
+        # st.write(reviewer_arrays)
         
         if st.button("Calculate and Generate Report"):
             try:
