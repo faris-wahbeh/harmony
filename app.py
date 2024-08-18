@@ -4,6 +4,7 @@ import pandas as pd
 from statsmodels.stats.inter_rater import fleiss_kappa
 from itertools import combinations
 import json
+from fpdf import FPDF
 
 def compute_fleiss_kappa(matrix):
     kappa = fleiss_kappa(matrix)
@@ -29,13 +30,12 @@ def acceptable_kappa(group, data, threshold):
 def classify_reviewers(data, threshold):
     n = len(data)
     if n == 2:
-        # Special handling for exactly two reviewers
         matrix = create_contingency_matrix(data, 2)
         kappa = compute_fleiss_kappa(matrix)
         if kappa < threshold:
-            return []  # Return an empty list to indicate the team is not in harmony
+            return []
         else:
-            return [list(range(n))]  # Return the two reviewers as one group if in harmony
+            return [list(range(n))]
 
     reviewers = list(range(n))
     best_groups = []
@@ -62,7 +62,6 @@ def get_group_kappas(groups, data, reviewer_arrays):
             kappa = compute_fleiss_kappa(matrix)
             results.append((group_names, kappa))
         else:
-            # Only append the group name without a kappa score
             results.append((group_names, None))
     return results
 
@@ -85,7 +84,51 @@ def convert_to_reviewer_arrays(df):
     
     return reviewer_arrays
 
-st.title("Fleiss' Kappa Calculator")
+def generate_report(kappa_results, pdf_filename="report.pdf"):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    pdf.cell(200, 10, txt="Fleiss' Kappa Report", ln=True, align='C')
+    pdf.ln(10)
+    
+    for group_names, kappa in kappa_results:
+        group_str = ', '.join(group_names)
+        if kappa is not None:
+            if kappa <= 0.3:
+                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
+                pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Very Low Agreement", ln=True)
+                pdf.ln(5)
+                pdf.multi_cell(0, 10, "Recommendations:", align='L')
+                pdf.multi_cell(0, 10, "- Comprehensive Criteria Overhaul with Group Input:\n  Facilitate a comprehensive overhaul of the evaluation criteria with active input from classified groups.", align='L')
+                pdf.multi_cell(0, 10, "- Intensive Group-Based Training and Mentorship:\n  Implement intensive training programs tailored to the specific needs of each classified group, focusing on the correct application of criteria and addressing common misconception.\n  Pair grouped with experienced mentors who can provide guidance and support.", align='L')
+            elif 0.3 < kappa <= 0.5:
+                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
+                pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Low Agreement", ln=True)
+                pdf.ln(5)
+                pdf.multi_cell(0, 10, "Recommendations:", align='L')
+                pdf.multi_cell(0, 10, "- Redesign Criteria with Group Collaboration:\n  Engage classified groups in a collaborative process to redesign and clarify evaluation criteria. Involve all group members in discussing potential ambiguities and revising criteria to ensure clarity and relevance.", align='L')
+                pdf.multi_cell(0, 10, "- Group Calibration Workshops:\n  Conduct calibration workshops within each classified group, where members collaboratively evaluate sample items and discuss their decisions.", align='L')
+            elif 0.5 < kappa <= 0.7:
+                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
+                pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Moderate Agreement", ln=True)
+                pdf.ln(5)
+                pdf.multi_cell(0, 10, "Recommendations:", align='L')
+                pdf.multi_cell(0, 10, "- Facilitate In-Depth Group Discussions:\n  Organize in-depth discussions between classified group members to explore areas where disagreements occur. Encourage group members to share their interpretations and reasoning, aiming to develop a consensus on evaluation criteria.", align='L')
+                pdf.multi_cell(0, 10, "- Peer Learning and Feedback:\n  Implement a peer learning system within each classified group where members review and provide feedback on each other's evaluations. This can help identify subtle misunderstandings and promote consistency.", align='L')
+            else:
+                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
+                pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - High Agreement", ln=True)
+        else:
+            pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
+        pdf.ln(10)
+    
+    pdf.output(pdf_filename)
+    return pdf_filename
+
+st.title("Fleiss' Kappa Calculator with PDF Report")
 
 threshold = st.number_input("Enter the threshold:", min_value=0.0, max_value=1.0, value=0.6)
 
@@ -111,7 +154,7 @@ if uploaded_file is not None:
         st.write("Reviewer Arrays:")
         st.write(reviewer_arrays)
         
-        if st.button("Calculate"):
+        if st.button("Calculate and Generate Report"):
             try:
                 # Calculate the overall Fleiss' Kappa before any grouping
                 matrix = create_contingency_matrix(ratings, 2)
@@ -129,13 +172,9 @@ if uploaded_file is not None:
                 else:
                     kappa_results = get_group_kappas(groups, ratings, reviewer_arrays)
 
-                    st.subheader("Classified Groups and Fleiss' Kappa")
-                    for group_names, kappa in kappa_results:
-                        st.markdown(f"**Group {group_names}**")
-                        if kappa is not None:
-                            st.write(f"Fleiss' kappa: {kappa:.4f}")
+                    # Generate PDF report
+                    pdf_filename = generate_report(kappa_results)
+                    with open(pdf_filename, "rb") as file:
+                        st.download_button(label="Download Report", data=file, file_name=pdf_filename, mime="application/pdf")
 
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-    except Exception as e:
-        st.error(f"Error loading the file: {str(e)}")
+            except Exception as e
