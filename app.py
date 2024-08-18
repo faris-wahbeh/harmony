@@ -208,4 +208,11 @@ if uploaded_file is not None:
                     kappa_results = get_group_kappas(groups, ratings, reviewer_arrays)
 
                     # Generate PDF report
-                    pdf
+                    pdf_filename = generate_report(kappa_results, overall_kappa, recommendations, comment)
+                    with open(pdf_filename, "rb") as file:
+                        st.download_button(label="Download Report", data=file, file_name=pdf_filename, mime="application/pdf")
+            
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
