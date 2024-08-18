@@ -93,6 +93,7 @@ def generate_recommendations(kappa):
             "Implement intensive training programs tailored to the specific needs of each classified group, focusing on the correct application of criteria and addressing common misconception.",
             "Pair grouped with experienced mentors who can provide guidance and support."
         ]
+        comment = "Very Low Agreement"
     elif 0.3 < kappa <= 0.5:
         recommendations = [
             "Redesign Criteria with Group Collaboration:",
@@ -101,6 +102,7 @@ def generate_recommendations(kappa):
             "Group Calibration Workshops:",
             "Conduct calibration workshops within each classified group, where members collaboratively evaluate sample items and discuss their decisions."
         ]
+        comment = "Low Agreement"
     elif 0.5 < kappa <= 0.7:
         recommendations = [
             "Facilitate In-Depth Group Discussions:",
@@ -110,6 +112,7 @@ def generate_recommendations(kappa):
             "Implement a peer learning system within each classified group where members review and provide feedback on each other's evaluations.",
             "This can help identify subtle misunderstandings and promote consistency."
         ]
+        comment = "Moderate Agreement"
     else:
         recommendations = [
             "Maintain High Standards:",
@@ -117,27 +120,35 @@ def generate_recommendations(kappa):
             "Explore Best Practices:",
             "Analyze what practices led to this high agreement and consider applying them across other groups."
         ]
-    return recommendations
+        comment = "High Agreement"
+    return recommendations, comment
 
-def generate_report(kappa_results, overall_kappa, recommendations, pdf_filename="report.pdf"):
+def generate_report(kappa_results, overall_kappa, recommendations, comment, pdf_filename="report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
-    pdf.cell(200, 10, txt="Fleiss' Kappa Report", ln=True, align='C')
+    # Bold the overall kappa score and add a comment
+    pdf.set_font("Arial", "B", size=12)
+    pdf.cell(200, 10, txt=f"Overall Kappa Score: {overall_kappa:.4f} ({comment})", ln=True)
     pdf.ln(10)
     
-    pdf.cell(200, 10, txt=f"Overall Kappa Score: {overall_kappa:.4f}", ln=True)
-    pdf.ln(5)
-    
-    pdf.cell(200, 10, txt="Recommendations based on overall Kappa Score:", ln=True)
+    # Bold Recommendations header
+    pdf.cell(200, 10, txt="Recommendations", ln=True)
+    pdf.set_font("Arial", size=12)
     pdf.ln(5)
     for rec in recommendations:
         pdf.multi_cell(0, 10, f"- {rec}", align='L')
     pdf.ln(10)
     
+    # Bold Classification header
+    pdf.set_font("Arial", "B", size=12)
+    pdf.cell(200, 10, txt="Classification", ln=True)
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", size=12)
     group_number = 1
     for group_names, kappa in kappa_results:
         group_str = ', '.join(group_names)
@@ -184,8 +195,8 @@ if uploaded_file is not None:
                 matrix = create_contingency_matrix(ratings, 2)
                 overall_kappa = compute_fleiss_kappa(matrix)
                 
-                # Generate recommendations based on the overall kappa
-                recommendations = generate_recommendations(overall_kappa)
+                # Generate recommendations and comment based on the overall kappa
+                recommendations, comment = generate_recommendations(overall_kappa)
                 
                 # Grouping and calculating Kappa for groups
                 groups = classify_reviewers(ratings, threshold)
@@ -197,11 +208,4 @@ if uploaded_file is not None:
                     kappa_results = get_group_kappas(groups, ratings, reviewer_arrays)
 
                     # Generate PDF report
-                    pdf_filename = generate_report(kappa_results, overall_kappa, recommendations)
-                    with open(pdf_filename, "rb") as file:
-                        st.download_button(label="Download Report", data=file, file_name=pdf_filename, mime="application/pdf")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
+                    pdf
