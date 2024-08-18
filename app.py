@@ -61,8 +61,15 @@ def parse_decisions_correctly(json_string):
     except json.JSONDecodeError as e:
         return None
 
-def convert_to_binary(decisions):
-    return [1 if value == 'Included' else 0 for value in decisions.values()]
+def convert_to_reviewer_arrays(df):
+    reviewer_names = df['parsed'].iloc[0].keys()
+    reviewer_arrays = {reviewer: [] for reviewer in reviewer_names}
+    
+    for index, row in df.iterrows():
+        for reviewer, decision in row['parsed'].items():
+            reviewer_arrays[reviewer].append(1 if decision == 'Included' else 0)
+    
+    return reviewer_arrays
 
 st.title("Fleiss' Kappa Calculator")
 
@@ -76,14 +83,19 @@ if uploaded_file is not None:
         st.write("Uploaded CSV File:")
         st.write(df)
 
-        # Parse and convert the decisions
+        # Parse the decisions
         df['parsed'] = df.iloc[:, 0].apply(parse_decisions_correctly)
-        df['binary'] = df['parsed'].apply(convert_to_binary)
         
-        # Transpose the binary arrays to match the expected input format
-        ratings = df['binary'].tolist()
-        ratings = np.array(ratings).T.tolist()
-        n_reviewers, n_items = len(ratings), len(ratings[0])
+        # Convert to arrays by reviewer
+        reviewer_arrays = convert_to_reviewer_arrays(df)
+        
+        # Transpose the data to match Fleiss' Kappa expected format
+        ratings = list(reviewer_arrays.values())
+        n_reviewers = len(ratings)
+        n_items = len(ratings[0])
+        
+        st.write("Reviewer Arrays:")
+        st.write(reviewer_arrays)
         
         if st.button("Calculate"):
             try:
@@ -92,7 +104,8 @@ if uploaded_file is not None:
 
                 st.subheader("Classified Groups and Fleiss' Kappa")
                 for group, kappa in kappa_results:
-                    st.markdown(f"**Group {group}**")
+                    group_names = [list(reviewer_arrays.keys())[i] for i in group]
+                    st.markdown(f"**Group {group_names}**")
                     st.write(f"Fleiss' kappa: {kappa:.4f}")
 
             except Exception as e:
