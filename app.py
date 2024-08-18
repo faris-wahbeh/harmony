@@ -84,7 +84,42 @@ def convert_to_reviewer_arrays(df):
     
     return reviewer_arrays
 
-def generate_report(kappa_results, pdf_filename="report.pdf"):
+def generate_recommendations(kappa):
+    if kappa <= 0.3:
+        recommendations = [
+            "Comprehensive Criteria Overhaul with Group Input:",
+            "Facilitate a comprehensive overhaul of the evaluation criteria with active input from classified groups.",
+            "Intensive Group-Based Training and Mentorship:",
+            "Implement intensive training programs tailored to the specific needs of each classified group, focusing on the correct application of criteria and addressing common misconception.",
+            "Pair grouped with experienced mentors who can provide guidance and support."
+        ]
+    elif 0.3 < kappa <= 0.5:
+        recommendations = [
+            "Redesign Criteria with Group Collaboration:",
+            "Engage classified groups in a collaborative process to redesign and clarify evaluation criteria.",
+            "Involve all group members in discussing potential ambiguities and revising criteria to ensure clarity and relevance.",
+            "Group Calibration Workshops:",
+            "Conduct calibration workshops within each classified group, where members collaboratively evaluate sample items and discuss their decisions."
+        ]
+    elif 0.5 < kappa <= 0.7:
+        recommendations = [
+            "Facilitate In-Depth Group Discussions:",
+            "Organize in-depth discussions between classified group members to explore areas where disagreements occur.",
+            "Encourage group members to share their interpretations and reasoning, aiming to develop a consensus on evaluation criteria.",
+            "Peer Learning and Feedback:",
+            "Implement a peer learning system within each classified group where members review and provide feedback on each other's evaluations.",
+            "This can help identify subtle misunderstandings and promote consistency."
+        ]
+    else:
+        recommendations = [
+            "Maintain High Standards:",
+            "The group shows a high level of agreement. Continue to monitor and maintain high standards.",
+            "Explore Best Practices:",
+            "Analyze what practices led to this high agreement and consider applying them across other groups."
+        ]
+    return recommendations
+
+def generate_report(kappa_results, overall_kappa, recommendations, pdf_filename="report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     
@@ -94,36 +129,30 @@ def generate_report(kappa_results, pdf_filename="report.pdf"):
     pdf.cell(200, 10, txt="Fleiss' Kappa Report", ln=True, align='C')
     pdf.ln(10)
     
+    pdf.cell(200, 10, txt=f"Overall Kappa Score: {overall_kappa:.4f}", ln=True)
+    pdf.ln(5)
+    
+    pdf.cell(200, 10, txt="Recommendations based on overall Kappa Score:", ln=True)
+    pdf.ln(5)
+    for rec in recommendations:
+        pdf.multi_cell(0, 10, f"- {rec}", align='L')
+    pdf.ln(10)
+    
+    group_number = 1
     for group_names, kappa in kappa_results:
         group_str = ', '.join(group_names)
+        pdf.cell(200, 10, txt=f"Group {group_number}: {group_str}", ln=True)
         if kappa is not None:
             if kappa <= 0.3:
-                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
                 pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Very Low Agreement", ln=True)
-                pdf.ln(5)
-                pdf.multi_cell(0, 10, "Recommendations:", align='L')
-                pdf.multi_cell(0, 10, "- Comprehensive Criteria Overhaul with Group Input:\n  Facilitate a comprehensive overhaul of the evaluation criteria with active input from classified groups.", align='L')
-                pdf.multi_cell(0, 10, "- Intensive Group-Based Training and Mentorship:\n  Implement intensive training programs tailored to the specific needs of each classified group, focusing on the correct application of criteria and addressing common misconception.\n  Pair grouped with experienced mentors who can provide guidance and support.", align='L')
             elif 0.3 < kappa <= 0.5:
-                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
                 pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Low Agreement", ln=True)
-                pdf.ln(5)
-                pdf.multi_cell(0, 10, "Recommendations:", align='L')
-                pdf.multi_cell(0, 10, "- Redesign Criteria with Group Collaboration:\n  Engage classified groups in a collaborative process to redesign and clarify evaluation criteria. Involve all group members in discussing potential ambiguities and revising criteria to ensure clarity and relevance.", align='L')
-                pdf.multi_cell(0, 10, "- Group Calibration Workshops:\n  Conduct calibration workshops within each classified group, where members collaboratively evaluate sample items and discuss their decisions.", align='L')
             elif 0.5 < kappa <= 0.7:
-                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
                 pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - Moderate Agreement", ln=True)
-                pdf.ln(5)
-                pdf.multi_cell(0, 10, "Recommendations:", align='L')
-                pdf.multi_cell(0, 10, "- Facilitate In-Depth Group Discussions:\n  Organize in-depth discussions between classified group members to explore areas where disagreements occur. Encourage group members to share their interpretations and reasoning, aiming to develop a consensus on evaluation criteria.", align='L')
-                pdf.multi_cell(0, 10, "- Peer Learning and Feedback:\n  Implement a peer learning system within each classified group where members review and provide feedback on each other's evaluations. This can help identify subtle misunderstandings and promote consistency.", align='L')
             else:
-                pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
                 pdf.cell(200, 10, txt=f"Kappa Score: {kappa:.4f} - High Agreement", ln=True)
-        else:
-            pdf.cell(200, 10, txt=f"Group: {group_str}", ln=True)
         pdf.ln(10)
+        group_number += 1
     
     pdf.output(pdf_filename)
     return pdf_filename
@@ -137,9 +166,6 @@ uploaded_file = st.file_uploader("Upload CSV file with ratings", type=["csv"])
 if uploaded_file is not None:
     try:
         df = pd.read_csv(uploaded_file)
-        # Commenting out the display of the uploaded CSV file and arrays
-        # st.write("Uploaded CSV File:")
-        # st.write(df)
 
         # Parse the decisions
         df['parsed'] = df.iloc[:, 0].apply(parse_decisions_correctly)
@@ -152,18 +178,14 @@ if uploaded_file is not None:
         n_reviewers = len(ratings)
         n_items = len(ratings[0])
         
-        # Commenting out the display of reviewer arrays
-        # st.write("Reviewer Arrays:")
-        # st.write(reviewer_arrays)
-        
         if st.button("Calculate and Generate Report"):
             try:
                 # Calculate the overall Fleiss' Kappa before any grouping
                 matrix = create_contingency_matrix(ratings, 2)
                 overall_kappa = compute_fleiss_kappa(matrix)
                 
-                st.subheader("Overall Fleiss' Kappa")
-                st.write(f"Fleiss' kappa for all reviewers: {overall_kappa:.4f}")
+                # Generate recommendations based on the overall kappa
+                recommendations = generate_recommendations(overall_kappa)
                 
                 # Grouping and calculating Kappa for groups
                 groups = classify_reviewers(ratings, threshold)
@@ -175,11 +197,11 @@ if uploaded_file is not None:
                     kappa_results = get_group_kappas(groups, ratings, reviewer_arrays)
 
                     # Generate PDF report
-                    pdf_filename = generate_report(kappa_results)
+                    pdf_filename = generate_report(kappa_results, overall_kappa, recommendations)
                     with open(pdf_filename, "rb") as file:
                         st.download_button(label="Download Report", data=file, file_name=pdf_filename, mime="application/pdf")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
     except Exception as e:
-        st.error(f"Error loading the file: {str(e)}")
+        st.error(f"Error
