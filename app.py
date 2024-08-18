@@ -134,8 +134,6 @@ if uploaded_file is not None:
                         st.markdown(f"**Group {group_names}**")
                         if kappa is not None:
                             st.write(f"Fleiss' kappa: {kappa:.4f}")
-                        else:
-                            st.write("Fleiss' kappa: Not applicable for single reviewer")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
