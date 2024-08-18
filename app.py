@@ -204,4 +204,4 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
     except Exception as e:
-        st.error(f"Error
+        st.error(f"Error: {str(e)}")
