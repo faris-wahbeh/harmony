@@ -177,4 +177,7 @@ if uploaded_file is not None:
                     with open(pdf_filename, "rb") as file:
                         st.download_button(label="Download Report", data=file, file_name=pdf_filename, mime="application/pdf")
 
-            except Exception as e
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    except Exception as e:
+        st.error(f"Error loading the file: {str(e)}")
