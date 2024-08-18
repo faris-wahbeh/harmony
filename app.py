@@ -51,16 +51,19 @@ def classify_reviewers(data, threshold):
             best_groups.append([reviewer])
     return best_groups
 
-def get_group_kappas(groups, data):
+def get_group_kappas(groups, data, reviewer_arrays):
     results = []
     for group in groups:
-        if len(group) == 1:
-            continue  # Skip calculating kappa for single-reviewer groups
-        group_data = [data[i] for i in group]
-        n_categories = max(max(r) for r in data) + 1
-        matrix = create_contingency_matrix(group_data, n_categories)
-        kappa = compute_fleiss_kappa(matrix)
-        results.append((group, kappa))
+        group_names = [list(reviewer_arrays.keys())[i] for i in group]
+        if len(group) > 1:
+            group_data = [data[i] for i in group]
+            n_categories = max(max(r) for r in data) + 1
+            matrix = create_contingency_matrix(group_data, n_categories)
+            kappa = compute_fleiss_kappa(matrix)
+            results.append((group_names, kappa))
+        else:
+            # Only append the group name without a kappa score
+            results.append((group_names, None))
     return results
 
 def parse_decisions_correctly(json_string):
@@ -124,13 +127,15 @@ if uploaded_file is not None:
                     st.subheader("Classification Result")
                     st.write("The team is not in harmony.")
                 else:
-                    kappa_results = get_group_kappas(groups, ratings)
+                    kappa_results = get_group_kappas(groups, ratings, reviewer_arrays)
 
                     st.subheader("Classified Groups and Fleiss' Kappa")
-                    for group, kappa in kappa_results:
-                        group_names = [list(reviewer_arrays.keys())[i] for i in group]
+                    for group_names, kappa in kappa_results:
                         st.markdown(f"**Group {group_names}**")
-                        st.write(f"Fleiss' kappa: {kappa:.4f}")
+                        if kappa is not None:
+                            st.write(f"Fleiss' kappa: {kappa:.4f}")
+                        else:
+                            st.write("Fleiss' kappa: Not applicable for single reviewer")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
