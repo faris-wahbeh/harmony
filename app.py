@@ -28,6 +28,15 @@ def acceptable_kappa(group, data, threshold):
 
 def classify_reviewers(data, threshold):
     n = len(data)
+    if n == 2:
+        # Special handling for exactly two reviewers
+        matrix = create_contingency_matrix(data, 2)
+        kappa = compute_fleiss_kappa(matrix)
+        if kappa < threshold:
+            return []  # Return an empty list to indicate the team is not in harmony
+        else:
+            return [list(range(n))]  # Return the two reviewers as one group if in harmony
+
     reviewers = list(range(n))
     best_groups = []
     used_reviewers = set()
@@ -45,6 +54,8 @@ def classify_reviewers(data, threshold):
 def get_group_kappas(groups, data):
     results = []
     for group in groups:
+        if len(group) == 1:
+            continue  # Skip calculating kappa for single-reviewer groups
         group_data = [data[i] for i in group]
         n_categories = max(max(r) for r in data) + 1
         matrix = create_contingency_matrix(group_data, n_categories)
@@ -108,13 +119,18 @@ if uploaded_file is not None:
                 
                 # Grouping and calculating Kappa for groups
                 groups = classify_reviewers(ratings, threshold)
-                kappa_results = get_group_kappas(groups, ratings)
+                
+                if len(groups) == 0 and n_reviewers == 2:
+                    st.subheader("Classification Result")
+                    st.write("The team is not in harmony.")
+                else:
+                    kappa_results = get_group_kappas(groups, ratings)
 
-                st.subheader("Classified Groups and Fleiss' Kappa")
-                for group, kappa in kappa_results:
-                    group_names = [list(reviewer_arrays.keys())[i] for i in group]
-                    st.markdown(f"**Group {group_names}**")
-                    st.write(f"Fleiss' kappa: {kappa:.4f}")
+                    st.subheader("Classified Groups and Fleiss' Kappa")
+                    for group, kappa in kappa_results:
+                        group_names = [list(reviewer_arrays.keys())[i] for i in group]
+                        st.markdown(f"**Group {group_names}**")
+                        st.write(f"Fleiss' kappa: {kappa:.4f}")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
