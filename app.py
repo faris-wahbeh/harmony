@@ -99,6 +99,14 @@ if uploaded_file is not None:
         
         if st.button("Calculate"):
             try:
+                # Calculate the overall Fleiss' Kappa before any grouping
+                matrix = create_contingency_matrix(ratings, 2)
+                overall_kappa = compute_fleiss_kappa(matrix)
+                
+                st.subheader("Overall Fleiss' Kappa")
+                st.write(f"Fleiss' kappa for all reviewers: {overall_kappa:.4f}")
+                
+                # Grouping and calculating Kappa for groups
                 groups = classify_reviewers(ratings, threshold)
                 kappa_results = get_group_kappas(groups, ratings)
 
